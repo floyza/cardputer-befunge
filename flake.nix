@@ -27,7 +27,7 @@
             })
           ];
 
-          IDF_TOOLCHAIN = "clang";
+          # IDF_TOOLCHAIN = "clang";
         };
     };
 }
