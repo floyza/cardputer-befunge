@@ -239,15 +239,23 @@ struct State {
     for (int tx = 0; tx < sq_wide; ++tx) {
       for (int ty = 0; ty < sq_high; ++ty) {
         char tile = idx(tx + bx, ty + by);
-        if ((tile >= 32) && (tile <= 126)) {
+        // disp.fillRect(sq_size * tx + 1, sq_size * ty + 1, sq_size - 1,
+        //               sq_size - 1, LIGHTGREY);
+        if ((tile >= 33) && (tile <= 126)) {
           disp.drawChar(tile, sq_size * tx + 3, sq_size * ty + 2);
+        } else if (tile == 32) {
+          // space
+        } else {
+          disp.drawChar(sq_size * tx + 3, sq_size * ty + 2, '?', WHITE, RED, 1);
         }
       }
     }
     for (int tx = 0; tx <= sq_wide; ++tx) {
       // vertical lines
       if (mod(tx + bx, grid_wide) == 0) {
-        disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, RED);
+        disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, BLACK);
+        disp.drawFastVLine(tx * sq_size - 1, 0, sq_high * sq_size + 1, BLACK);
+        disp.drawFastVLine(tx * sq_size + 1, 0, sq_high * sq_size + 1, BLACK);
       } else {
         disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, BLACK);
       }
@@ -255,7 +263,9 @@ struct State {
     for (int ty = 0; ty <= sq_high; ++ty) {
       // horizontal lines
       if (mod(ty + by, grid_high) == 0) {
-        disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, RED);
+        disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, BLACK);
+        disp.drawFastHLine(0, ty * sq_size - 1, sq_wide * sq_size + 1, BLACK);
+        disp.drawFastHLine(0, ty * sq_size + 1, sq_wide * sq_size + 1, BLACK);
       } else {
         disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, BLACK);
       }
@@ -263,9 +273,11 @@ struct State {
     disp.drawRect(sq_size * (sq_wide / 2) + 1, sq_size * (sq_high / 2) + 1,
                   sq_size - 1, sq_size - 1, BLUE);
     int offset = (sheight - sq_size * sq_high - 10) / 2;
-    disp.drawString(("dx: " + std::to_string(dx)).c_str(), offset,
+    disp.drawString(("value: " + std::to_string(idx(x, y))).c_str(), offset,
                     sq_size * sq_high + offset);
-    disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 50,
+    disp.drawString(("dx: " + std::to_string(dx)).c_str(), offset + 100,
+                    sq_size * sq_high + offset);
+    disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 150,
                     sq_size * sq_high + offset);
 
     disp.drawString("stack", sq_size * sq_wide + 3, 0);
