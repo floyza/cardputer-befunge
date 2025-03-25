@@ -124,15 +124,19 @@ struct State {
             case 0:
               dx = -1;
               dy = 0;
+              break;
             case 1:
               dx = 1;
               dy = 0;
+              break;
             case 2:
               dx = 0;
               dy = -1;
+              break;
             case 3:
               dx = 0;
               dy = 1;
+              break;
           }
           break;
         case '_':
@@ -211,6 +215,10 @@ struct State {
           break;
       }
     }
+    advance_pointer();
+  }
+
+  void advance_pointer() {
     x = mod(x + dx, grid_wide);
     y = mod(y + dy, grid_high);
   }
@@ -238,16 +246,16 @@ struct State {
     }
     for (int tx = 0; tx <= sq_wide; ++tx) {
       // vertical lines
-      if (tx + bx == 0) {
-        disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, VIOLET);
+      if (mod(tx + bx, grid_wide) == 0) {
+        disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, RED);
       } else {
         disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, BLACK);
       }
     }
     for (int ty = 0; ty <= sq_high; ++ty) {
       // horizontal lines
-      if (ty + by == 0) {
-        disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, VIOLET);
+      if (mod(ty + by, grid_high) == 0) {
+        disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, RED);
       } else {
         disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, BLACK);
       }
@@ -285,10 +293,11 @@ extern "C" void app_main() {
       const auto& keys = M5Cardputer.Keyboard.keysState();
       bool last_tab = false;
       bool last_enter = false;
+      bool redraw = false;
       if (keys.tab && !last_tab) {
         running = false;
         st->step();
-        st->draw();
+        redraw = true;
       }
       if (keys.enter && !last_enter) {
         running = true;
@@ -301,30 +310,38 @@ extern "C" void app_main() {
         // example: shift+a+enter -> let go of shift
         if (std::find(last.begin(), last.end(), c) == last.end()) {
           running = false;
+          bool changed = true;
           if (c == '/' && !keys.fn) {
             // right
             st->dx = 1;
             st->dy = 0;
-            st->x += 1;
+            st->advance_pointer();
           } else if (c == ',' && !keys.fn) {
             // left
             st->dx = -1;
             st->dy = 0;
-            st->x -= 1;
+            st->advance_pointer();
           } else if (c == ';' && !keys.fn) {
             // up
             st->dx = 0;
             st->dy = -1;
-            st->y -= 1;
+            st->advance_pointer();
           } else if (c == '.' && !keys.fn) {
             // down
             st->dx = 0;
             st->dy = 1;
-            st->y += 1;
+            st->advance_pointer();
           } else if ((c >= 32) && (c <= 126)) {
             st->idx(st->x, st->y) = c;
+          } else {
+            changed = false;
+          }
+          if (changed) {
+            redraw = true;
           }
         }
+      }
+      if (redraw) {
         st->draw();
       }
       last = keys.word;
