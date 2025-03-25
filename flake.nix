@@ -2,7 +2,7 @@
   description = "A very basic flake";
 
   inputs = {
-    esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+    esp-dev.url = "git+file:///home/gavin/src/nixpkgs-esp-dev";
   };
 
   outputs =
@@ -23,6 +23,8 @@
                 "openocd-esp32"
                 "xtensa-esp-elf-gdb"
                 "esp-clang"
+
+                "qemu-xtensa"
               ];
             })
           ];

@@ -6,17 +6,16 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1729678934,
-        "narHash": "sha256-fSyXeWJ+9IVJJvZztu1suJm/zp/FgfAzh8RVoveVssQ=",
-        "owner": "mirrexagon",
-        "repo": "nixpkgs-esp-dev",
-        "rev": "3f748af71ac7890e1f860801fdca2beef65e8353",
-        "type": "github"
+        "dirtyRev": "fccd03073646557f19308ee7d4c7a9c31a8df225-dirty",
+        "dirtyShortRev": "fccd030-dirty",
+        "lastModified": 1736547837,
+        "narHash": "sha256-30kai7JVz3BV1ICIm67wKKX5z9Tw2HbTTnSdEKPbUz0=",
+        "type": "git",
+        "url": "file:///home/gavin/src/nixpkgs-esp-dev"
       },
       "original": {
-        "owner": "mirrexagon",
-        "repo": "nixpkgs-esp-dev",
-        "type": "github"
+        "type": "git",
+        "url": "file:///home/gavin/src/nixpkgs-esp-dev"
       }
     },
     "flake-utils": {

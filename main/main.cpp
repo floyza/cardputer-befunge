@@ -14,8 +14,12 @@ constexpr int sheight = 135;
 
 constexpr int sq_size = 10;
 
+// visible width and height
 constexpr int sq_wide = swidth / sq_size - 4;
 constexpr int sq_high = sheight / sq_size - 1;
+
+constexpr int grid_wide = 256;
+constexpr int grid_high = 256;
 
 std::mt19937 rng((std::random_device())());
 
@@ -25,16 +29,23 @@ int rand_int(int i) {
   return dist(rng);
 }
 
+int mod(int i, int m) {
+  int s = i % m;
+  return (s >= 0) ? s : (s + m);
+}
+
 struct State {
+ private:
+  int16_t grid[grid_high][grid_wide];  // access with idx()
+ public:
   State() {
-    for (int y = 0; y < sq_high; ++y) {
-      for (int x = 0; x < sq_wide; ++x) {
+    for (int y = 0; y < grid_high; ++y) {
+      for (int x = 0; x < grid_wide; ++x) {
         grid[y][x] = ' ';
       }
     }
   }
-  char grid[sq_high][sq_wide];
-  std::vector<int32_t> stack;
+  std::vector<int16_t> stack;
   bool stringmode = false;
   int x = 0;
   int y = 0;
@@ -55,13 +66,13 @@ struct State {
   void step() {
     int32_t a, b;
     if (stringmode) {
-      if (grid[y][x] == '"') {
+      if (idx(x, y) == '"') {
         stringmode = false;
       } else {
-        push(grid[y][x]);
+        push(idx(x, y));
       }
     } else {
-      switch (grid[y][x]) {
+      switch (idx(x, y)) {
         case '+':
           push(pop() + pop());
           break;
@@ -170,12 +181,12 @@ struct State {
         case 'g':
           b = pop();
           a = pop();
-          push(grid[b][a]);
+          push(idx(a, b));
           break;
         case 'p':
           b = pop();
           a = pop();
-          grid[b][a] = pop();
+          idx(a, b) = pop();
           break;
         case '&':
           // TODO
@@ -200,34 +211,49 @@ struct State {
           break;
       }
     }
-    x += dx;
-    y += dy;
+    x = mod(x + dx, grid_wide);
+    y = mod(y + dy, grid_high);
   }
 
+  int16_t& idx(int x, int y) {
+    return grid[mod(y, grid_high)][mod(x, grid_wide)];
+  }
+
+  // draw grid focused on x,y
   void draw() {
     m5gfx::M5Canvas disp(&M5Cardputer.Display);
     disp.createSprite(swidth, sheight);
     // disp.setTextSize(sq_size);
     disp.setTextColor(BLACK, WHITE);
     disp.clear(WHITE);
-    for (int x = 0; x < sq_wide; ++x) {
-      for (int y = 0; y < sq_high; ++y) {
-        char tile = grid[y][x];
+    int bx = x - sq_wide / 2;
+    int by = y - sq_high / 2;
+    for (int tx = 0; tx < sq_wide; ++tx) {
+      for (int ty = 0; ty < sq_high; ++ty) {
+        char tile = idx(tx + bx, ty + by);
         if ((tile >= 32) && (tile <= 126)) {
-          disp.drawChar(tile, sq_size * x + 3, sq_size * y + 2);
+          disp.drawChar(tile, sq_size * tx + 3, sq_size * ty + 2);
         }
       }
     }
-    for (int x = 0; x <= sq_wide; ++x) {
+    for (int tx = 0; tx <= sq_wide; ++tx) {
       // vertical lines
-      disp.drawFastVLine(x * sq_size, 0, sq_high * sq_size + 1, BLACK);
+      if (tx + bx == 0) {
+        disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, VIOLET);
+      } else {
+        disp.drawFastVLine(tx * sq_size, 0, sq_high * sq_size + 1, BLACK);
+      }
     }
-    for (int y = 0; y <= sq_high; ++y) {
+    for (int ty = 0; ty <= sq_high; ++ty) {
       // horizontal lines
-      disp.drawFastHLine(0, y * sq_size, sq_wide * sq_size + 1, BLACK);
+      if (ty + by == 0) {
+        disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, VIOLET);
+      } else {
+        disp.drawFastHLine(0, ty * sq_size, sq_wide * sq_size + 1, BLACK);
+      }
     }
-    disp.drawRect(sq_size * x + 1, sq_size * y + 1, sq_size - 1, sq_size - 1,
-                  BLUE);
+    disp.drawRect(sq_size * (sq_wide / 2) + 1, sq_size * (sq_high / 2) + 1,
+                  sq_size - 1, sq_size - 1, BLUE);
     int offset = (sheight - sq_size * sq_high - 10) / 2;
     disp.drawString(("dx: " + std::to_string(dx)).c_str(), offset,
                     sq_size * sq_high + offset);
@@ -251,18 +277,18 @@ extern "C" void app_main() {
   std::vector<char> last;
   std::string word_chars;
 
-  State st;
-  st.draw();
+  State* st = new State();
+  st->draw();
   bool running = false;
   while (true) {
     if (M5Cardputer.Keyboard.isChange()) {
-      const auto &keys = M5Cardputer.Keyboard.keysState();
+      const auto& keys = M5Cardputer.Keyboard.keysState();
       bool last_tab = false;
       bool last_enter = false;
       if (keys.tab && !last_tab) {
         running = false;
-        st.step();
-        st.draw();
+        st->step();
+        st->draw();
       }
       if (keys.enter && !last_enter) {
         running = true;
@@ -277,37 +303,37 @@ extern "C" void app_main() {
           running = false;
           if (c == '/' && !keys.fn) {
             // right
-            st.dx = 1;
-            st.dy = 0;
-            st.x += 1;
+            st->dx = 1;
+            st->dy = 0;
+            st->x += 1;
           } else if (c == ',' && !keys.fn) {
             // left
-            st.dx = -1;
-            st.dy = 0;
-            st.x -= 1;
+            st->dx = -1;
+            st->dy = 0;
+            st->x -= 1;
           } else if (c == ';' && !keys.fn) {
             // up
-            st.dx = 0;
-            st.dy = -1;
-            st.y -= 1;
+            st->dx = 0;
+            st->dy = -1;
+            st->y -= 1;
           } else if (c == '.' && !keys.fn) {
             // down
-            st.dx = 0;
-            st.dy = 1;
-            st.y += 1;
+            st->dx = 0;
+            st->dy = 1;
+            st->y += 1;
           } else if ((c >= 32) && (c <= 126)) {
-            st.grid[st.y][st.x] = c;
+            st->idx(st->x, st->y) = c;
           }
         }
-        st.draw();
+        st->draw();
       }
       last = keys.word;
       last_tab = keys.tab;
       last_enter = keys.enter;
     }
     if (running) {
-      st.step();
-      st.draw();
+      st->step();
+      st->draw();
       M5.delay(50);
     } else {
       M5.delay(1);
