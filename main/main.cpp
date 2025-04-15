@@ -275,10 +275,22 @@ struct State {
     int offset = (sheight - sq_size * sq_high - 10) / 2;
     disp.drawString(("value: " + std::to_string(idx(x, y))).c_str(), offset,
                     sq_size * sq_high + offset);
-    disp.drawString(("dx: " + std::to_string(dx)).c_str(), offset + 100,
+    disp.drawString(("dx: " + std::to_string(dx)).c_str(), offset + 80,
                     sq_size * sq_high + offset);
-    disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 150,
+    disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 130,
                     sq_size * sq_high + offset);
+
+    disp.drawString(
+        ("%: " + std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(),
+        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 2);
+    disp.drawString(
+        ("mV: " + std::to_string(M5Cardputer.Power.getBatteryVoltage()))
+            .c_str(),
+        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size);
+    disp.drawString(
+        ("mA: " + std::to_string(M5Cardputer.Power.getBatteryCurrent()))
+            .c_str(),
+        sq_size * sq_wide + offset, sq_size * sq_high + offset);
 
     disp.drawString("stack", sq_size * sq_wide + 3, 0);
     disp.drawFastHLine(sq_size * sq_wide + 2, 10,
@@ -293,6 +305,7 @@ struct State {
 
 extern "C" void app_main() {
   M5Cardputer.begin(true);
+  M5Cardputer.Power.begin();
 
   std::vector<char> last;
   std::string word_chars;
