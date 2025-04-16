@@ -9,6 +9,11 @@
 
 #include <random>
 
+#include "esp_log.h"
+#include "esp_spiffs.h"
+
+static const char* TAG = "befunge";
+
 constexpr int swidth = 240;
 constexpr int sheight = 135;
 
@@ -227,8 +232,12 @@ struct State {
     return grid[mod(y, grid_high)][mod(x, grid_wide)];
   }
 
+  const int16_t& idx(int x, int y) const {
+    return grid[mod(y, grid_high)][mod(x, grid_wide)];
+  }
+
   // draw grid focused on x,y
-  void draw() {
+  void draw() const {
     m5gfx::M5Canvas disp(&M5Cardputer.Display);
     disp.createSprite(swidth, sheight);
     // disp.setTextSize(sq_size);
@@ -280,17 +289,19 @@ struct State {
     disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 130,
                     sq_size * sq_high + offset);
 
-    disp.drawString(
-        ("%: " + std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(),
-        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 2);
-    disp.drawString(
-        ("mV: " + std::to_string(M5Cardputer.Power.getBatteryVoltage()))
-            .c_str(),
-        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size);
-    disp.drawString(
-        ("mA: " + std::to_string(M5Cardputer.Power.getBatteryCurrent()))
-            .c_str(),
-        sq_size * sq_wide + offset, sq_size * sq_high + offset);
+    // adc1 is already in use
+    // disp.drawString(
+    //     ("%: " +
+    //     std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(), sq_size
+    //     * sq_wide + offset, sq_size * sq_high + offset - sq_size * 2);
+    // disp.drawString(
+    //     ("mV: " + std::to_string(M5Cardputer.Power.getBatteryVoltage()))
+    //         .c_str(),
+    //     sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size);
+    // disp.drawString(
+    //     ("mA: " + std::to_string(M5Cardputer.Power.getBatteryCurrent()))
+    //         .c_str(),
+    //     sq_size * sq_wide + offset, sq_size * sq_high + offset);
 
     disp.drawString("stack", sq_size * sq_wide + 3, 0);
     disp.drawFastHLine(sq_size * sq_wide + 2, 10,
@@ -301,11 +312,113 @@ struct State {
     }
     disp.pushSprite(0, 0);
   }
+
+  void save() const {
+    ESP_LOGI(TAG, "Saving program");
+    {
+      m5gfx::M5Canvas disp(&M5Cardputer.Display);
+      disp.createSprite(swidth, sheight);
+      disp.setTextColor(BLACK, WHITE);
+      disp.clear(WHITE);
+      disp.drawString("SAVING", swidth / 4, sheight / 4);
+      disp.pushSprite(0, 0);
+    }
+    FILE* f = fopen("/spiffs/prog", "w");
+    if (f == nullptr) {
+      ESP_LOGE(TAG, "Failed to open file for writing");
+      return;
+    }
+    for (int y = 0; y < grid_high; ++y) {
+      for (int x = 0; x < grid_wide; ++x) {
+        fprintf(f, "%c%c", grid[y][x] & 0xff, grid[y][x] >> 8);
+      }
+    }
+    fclose(f);
+    draw();
+  }
+
+  void load() {
+    ESP_LOGI(TAG, "Loading program");
+    {
+      m5gfx::M5Canvas disp(&M5Cardputer.Display);
+      disp.createSprite(swidth, sheight);
+      disp.setTextColor(BLACK, WHITE);
+      disp.clear(WHITE);
+      disp.drawString("LOADING", swidth / 4, sheight / 4);
+      disp.pushSprite(0, 0);
+    }
+    FILE* f = fopen("/spiffs/prog", "r");
+    if (f == nullptr) {
+      ESP_LOGE(TAG, "Failed to open file for reading");
+      return;
+    }
+    for (int y = 0; y < grid_high; ++y) {
+      for (int x = 0; x < grid_wide; ++x) {
+        int lsb = fgetc(f);
+        int msb = fgetc(f);
+        if (lsb == EOF || msb == EOF) {
+          ESP_LOGE(TAG, "Hit EOF while loading program");
+          return;
+        }
+        grid[y][x] = lsb | (msb << 8);
+      }
+    }
+    fclose(f);
+    draw();
+  }
 };
 
+void init_spiffs() {
+  ESP_LOGI(TAG, "Initializing SPIFFS");
+  esp_vfs_spiffs_conf_t conf = {
+      .base_path = "/spiffs",
+      .partition_label = nullptr,
+      .max_files = 5,
+      .format_if_mount_failed = true,
+  };
+
+  esp_err_t ret = esp_vfs_spiffs_register(&conf);
+
+  if (ret != ESP_OK) {
+    if (ret == ESP_FAIL) {
+      ESP_LOGE(TAG, "Failed to mount or format filesystem");
+    } else if (ret == ESP_ERR_NOT_FOUND) {
+      ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+    } else {
+      ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+    }
+    return;
+  }
+
+  ret = esp_spiffs_check(conf.partition_label);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "spiffs_check() failed (%s)", esp_err_to_name(ret));
+    return;
+  } else {
+    ESP_LOGI(TAG, "spiffs_check() successful");
+  }
+
+  size_t total = 0, used = 0;
+  ret = esp_spiffs_info(conf.partition_label, &total, &used);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)",
+             esp_err_to_name(ret));
+    return;
+  } else {
+    ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+  }
+}
+
 extern "C" void app_main() {
+  ESP_LOGI(TAG, "Starting");
+
   M5Cardputer.begin(true);
-  M5Cardputer.Power.begin();
+  if (!M5Cardputer.Power.begin()) {
+    ESP_LOGE(TAG, "Failed to init power.");
+  }
+  init_spiffs();
+
+  ESP_LOGI(TAG, "Init done: starting");
 
   std::vector<char> last;
   std::string word_chars;
@@ -356,6 +469,10 @@ extern "C" void app_main() {
             st->dx = 0;
             st->dy = 1;
             st->advance_pointer();
+          } else if (c == 's' && keys.fn) {
+            st->save();
+          } else if (c == 'l' && keys.fn) {
+            st->load();
           } else if ((c >= 32) && (c <= 126)) {
             st->idx(st->x, st->y) = c;
           } else {
@@ -378,7 +495,7 @@ extern "C" void app_main() {
       st->draw();
       M5.delay(50);
     } else {
-      M5.delay(1);
+      M5.delay(10);
     }
     M5Cardputer.update();
   }
