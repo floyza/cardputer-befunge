@@ -289,19 +289,12 @@ struct State {
     disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 130,
                     sq_size * sq_high + offset);
 
-    // adc1 is already in use
-    // disp.drawString(
-    //     ("%: " +
-    //     std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(), sq_size
-    //     * sq_wide + offset, sq_size * sq_high + offset - sq_size * 2);
-    // disp.drawString(
-    //     ("mV: " + std::to_string(M5Cardputer.Power.getBatteryVoltage()))
-    //         .c_str(),
-    //     sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size);
-    // disp.drawString(
-    //     ("mA: " + std::to_string(M5Cardputer.Power.getBatteryCurrent()))
-    //         .c_str(),
-    //     sq_size * sq_wide + offset, sq_size * sq_high + offset);
+    disp.drawString(
+        ("%: " + std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(),
+        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 1);
+    disp.drawString(
+        ("mV" + std::to_string(M5Cardputer.Power.getBatteryVoltage())).c_str(),
+        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 0);
 
     disp.drawString("stack", sq_size * sq_wide + 3, 0);
     disp.drawFastHLine(sq_size * sq_wide + 2, 10,
@@ -422,6 +415,8 @@ extern "C" void app_main() {
 
   std::vector<char> last;
   std::string word_chars;
+
+  M5Cardputer.Power.getBatteryLevel();
 
   State* st = new State();
   st->draw();
