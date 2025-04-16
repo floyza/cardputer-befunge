@@ -421,6 +421,7 @@ extern "C" void app_main() {
   State* st = new State();
   st->draw();
   bool running = false;
+  int ticks_since_last_draw = 0;
   while (true) {
     if (M5Cardputer.Keyboard.isChange()) {
       const auto& keys = M5Cardputer.Keyboard.keysState();
@@ -480,6 +481,7 @@ extern "C" void app_main() {
       }
       if (redraw) {
         st->draw();
+        ticks_since_last_draw = 0;
       }
       last = keys.word;
       last_tab = keys.tab;
@@ -488,9 +490,16 @@ extern "C" void app_main() {
     if (running) {
       st->step();
       st->draw();
+      ticks_since_last_draw = 0;
       M5.delay(50);
     } else {
       M5.delay(10);
+      ticks_since_last_draw++;
+    }
+    if (ticks_since_last_draw >= 200) {
+      // every 5 seconds
+      st->draw();
+      ticks_since_last_draw = 0;
     }
     M5Cardputer.update();
   }
