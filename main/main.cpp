@@ -50,19 +50,21 @@ struct State {
  private:
   int16_t grid[grid_high][grid_wide];  // access with idx()
  public:
-  State() {
-    for (int y = 0; y < grid_high; ++y) {
-      for (int x = 0; x < grid_wide; ++x) {
-        grid[y][x] = ' ';
-      }
-    }
-  }
+  State() { clear(); }
   std::vector<int16_t> stack;
   bool stringmode = false;
   int x = 0;
   int y = 0;
   int dx = 1;
   int dy = 0;
+
+  void clear() {
+    for (int y = 0; y < grid_high; ++y) {
+      for (int x = 0; x < grid_wide; ++x) {
+        grid[y][x] = ' ';
+      }
+    }
+  }
 
   int32_t pop() {
     if (stack.size()) {
@@ -487,6 +489,10 @@ extern "C" void app_main() {
             st->save();
           } else if (c == 'l' && keys.fn) {
             st->load();
+          } else if (c == ' ' && keys.fn) {
+            st->clear();
+          } else if (c == 'c' && keys.fn) {
+            st->stack.clear();
           } else if ((c >= 32) && (c <= 126)) {
             st->idx(st->x, st->y) = c;
           } else {
