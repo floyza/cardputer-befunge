@@ -9,10 +9,17 @@
 
 #include <random>
 
+#include "driver/sdmmc_host.h"
 #include "esp_log.h"
-#include "esp_spiffs.h"
+#include "esp_vfs_fat.h"
+#include "sdmmc_cmd.h"
 
 static const char* TAG = "befunge";
+
+constexpr int SD_SPI_SCK_PIN = 40;
+constexpr int SD_SPI_MISO_PIN = 39;
+constexpr int SD_SPI_MOSI_PIN = 14;
+constexpr int SD_SPI_CS_PIN = 12;
 
 constexpr int swidth = 240;
 constexpr int sheight = 135;
@@ -316,7 +323,7 @@ struct State {
       disp.drawString("SAVING", swidth / 4, sheight / 4);
       disp.pushSprite(0, 0);
     }
-    FILE* f = fopen("/spiffs/prog", "w");
+    FILE* f = fopen("/sdcard/prog", "w");
     if (f == nullptr) {
       ESP_LOGE(TAG, "Failed to open file for writing");
       return;
@@ -340,7 +347,7 @@ struct State {
       disp.drawString("LOADING", swidth / 4, sheight / 4);
       disp.pushSprite(0, 0);
     }
-    FILE* f = fopen("/spiffs/prog", "r");
+    FILE* f = fopen("/sdcard/prog", "r");
     if (f == nullptr) {
       ESP_LOGE(TAG, "Failed to open file for reading");
       return;
@@ -361,45 +368,56 @@ struct State {
   }
 };
 
-void init_spiffs() {
-  ESP_LOGI(TAG, "Initializing SPIFFS");
-  esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/spiffs",
-      .partition_label = nullptr,
+void init_sd() {
+  esp_err_t ret;
+
+  esp_vfs_fat_sdmmc_mount_config_t mount_cfg{
+      .format_if_mount_failed = false,
       .max_files = 5,
-      .format_if_mount_failed = true,
+      .allocation_unit_size = 16 * 1024,
   };
 
-  esp_err_t ret = esp_vfs_spiffs_register(&conf);
+  sdmmc_card_t* card;
+  const char* mount_point = "/sdcard";
+  ESP_LOGI(TAG, "Initializing SD card");
 
+  ESP_LOGI(TAG, "Using SPI peripheral");
+
+  sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+
+  spi_bus_config_t buf_cfg{
+      .mosi_io_num = SD_SPI_MOSI_PIN,
+      .miso_io_num = SD_SPI_MISO_PIN,
+      .sclk_io_num = SD_SPI_SCK_PIN,
+      .quadwp_io_num = -1,
+      .quadhd_io_num = -1,
+      .max_transfer_sz = 4000,
+  };
+
+  ret = spi_bus_initialize(static_cast<spi_host_device_t>(host.slot), &buf_cfg,
+                           SDSPI_DEFAULT_DMA);
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to init bus");
+    return;
+  }
+
+  sdspi_device_config_t slot_cfg = SDSPI_DEVICE_CONFIG_DEFAULT();
+  slot_cfg.gpio_cs = static_cast<gpio_num_t>(SD_SPI_CS_PIN);
+  slot_cfg.host_id = static_cast<spi_host_device_t>(host.slot);
+
+  ESP_LOGI(TAG, "Mounting filesystem");
+  ret =
+      esp_vfs_fat_sdspi_mount(mount_point, &host, &slot_cfg, &mount_cfg, &card);
   if (ret != ESP_OK) {
     if (ret == ESP_FAIL) {
-      ESP_LOGE(TAG, "Failed to mount or format filesystem");
-    } else if (ret == ESP_ERR_NOT_FOUND) {
-      ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+      ESP_LOGE(TAG, "Failed to mount filesystem (auto-format is disabled)");
     } else {
-      ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+      ESP_LOGE(TAG, "Failed to initialize the card (%s)", esp_err_to_name(ret));
     }
-    return;
   }
+  ESP_LOGI(TAG, "Filesystem mounted");
 
-  ret = esp_spiffs_check(conf.partition_label);
-  if (ret != ESP_OK) {
-    ESP_LOGE(TAG, "spiffs_check() failed (%s)", esp_err_to_name(ret));
-    return;
-  } else {
-    ESP_LOGI(TAG, "spiffs_check() successful");
-  }
-
-  size_t total = 0, used = 0;
-  ret = esp_spiffs_info(conf.partition_label, &total, &used);
-  if (ret != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)",
-             esp_err_to_name(ret));
-    return;
-  } else {
-    ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-  }
+  sdmmc_card_print_info(stdout, card);
 }
 
 extern "C" void app_main() {
@@ -409,17 +427,17 @@ extern "C" void app_main() {
   if (!M5Cardputer.Power.begin()) {
     ESP_LOGE(TAG, "Failed to init power.");
   }
-  init_spiffs();
+  init_sd();
 
   ESP_LOGI(TAG, "Init done: starting");
 
   std::vector<char> last;
   std::string word_chars;
 
-  M5Cardputer.Power.getBatteryLevel();
-
   State* st = new State();
+  // for some reason the display locks up if we don't draw before we load
   st->draw();
+  st->load();
   bool running = false;
   int ticks_since_last_draw = 0;
   while (true) {
