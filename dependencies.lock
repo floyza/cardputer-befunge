@@ -2,7 +2,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.3.1
+    version: 5.4.0
   m5stack/m5gfx:
     component_hash: fb1ee0423582dd0e26f9467221e9a38249403f7c8912094047d0a1deabcc7413
     dependencies: []

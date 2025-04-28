@@ -3,19 +3,22 @@
     "esp-dev": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
-        "dirtyRev": "fccd03073646557f19308ee7d4c7a9c31a8df225-dirty",
-        "dirtyShortRev": "fccd030-dirty",
-        "lastModified": 1736547837,
-        "narHash": "sha256-30kai7JVz3BV1ICIm67wKKX5z9Tw2HbTTnSdEKPbUz0=",
-        "type": "git",
-        "url": "file:///home/gavin/src/nixpkgs-esp-dev"
+        "lastModified": 1738140586,
+        "narHash": "sha256-Vn4PD4eH18QklgDY1vnjXJqNPmP3SJNejcBroW0yTTA=",
+        "owner": "mirrexagon",
+        "repo": "nixpkgs-esp-dev",
+        "rev": "29517b39abe729e04118bf77af526f9947f6c476",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/gavin/src/nixpkgs-esp-dev"
+        "owner": "mirrexagon",
+        "repo": "nixpkgs-esp-dev",
+        "type": "github"
       }
     },
     "flake-utils": {
@@ -38,22 +41,24 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1729501122,
-        "narHash": "sha256-tScdcYQ37kMqlyqb5yizNDTKXZASLB4zHitlHwOg+/o=",
+        "lastModified": 1745377448,
+        "narHash": "sha256-jhZDfXVKdD7TSEGgzFJQvEEZ2K65UMiqW5YJ2aIqxMA=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "56c7c4a3f5fdbef5bf81c7d9c28fbb45dc626611",
+        "rev": "507b63021ada5fee621b6ca371c4fca9ca46f52c",
         "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
+        "owner": "NixOS",
         "ref": "nixpkgs-unstable",
-        "type": "indirect"
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
-        "esp-dev": "esp-dev"
+        "esp-dev": "esp-dev",
+        "nixpkgs": "nixpkgs"
       }
     },
     "systems": {

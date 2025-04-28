@@ -2,15 +2,21 @@
   description = "A very basic flake";
 
   inputs = {
-    esp-dev.url = "git+file:///home/gavin/src/nixpkgs-esp-dev";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    esp-dev.url = "github:mirrexagon/nixpkgs-esp-dev";
+    esp-dev.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
-    { self, esp-dev }:
+    {
+      self,
+      nixpkgs,
+      esp-dev,
+    }:
     {
       devShells.x86_64-linux.default =
         let
-          pkgs = import esp-dev.inputs.nixpkgs { system = "x86_64-linux"; };
+          pkgs = import nixpkgs { system = "x86_64-linux"; };
         in
         pkgs.mkShell {
           name = "esp-idf-esp32s3-shell";
@@ -23,8 +29,6 @@
                 "openocd-esp32"
                 "xtensa-esp-elf-gdb"
                 "esp-clang"
-
-                "qemu-xtensa"
               ];
             })
           ];
