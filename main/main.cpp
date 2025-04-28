@@ -53,6 +53,7 @@ struct State {
   State() { clear(); }
   std::vector<int16_t> stack;
   bool stringmode = false;
+  bool helpmode = false;
   int x = 0;
   int y = 0;
   int dx = 1;
@@ -313,6 +314,21 @@ struct State {
                       sq_size * sq_wide + offset, 10 * i + 12);
     }
     disp.pushSprite(0, 0);
+
+    if (helpmode) {
+      disp.createSprite(swidth - 20, sheight - 20);
+      disp.setTextColor(BLACK, LIGHTGREY);
+      disp.clear(LIGHTGREY);
+      disp.drawString("0-9 +-*/%!><^v?\":#@", 0, 0);
+      disp.drawString("_ Pop move right if value=0, left otherwise", 0, 10);
+      disp.drawString("| Pop move down if value=0, up otherwise", 0, 20);
+      disp.drawString("\\ Swap two top stack", 0, 30);
+      disp.drawString("$ Pop stack, discard", 0, 40);
+      disp.drawString("p Pop y, x, v, (x,y) to v", 0, 50);
+      disp.drawString("g Pop y and x, get", 0, 60);
+      disp.drawString("` Pop b and a, 1 if a>b else 0", 0, 60);
+      disp.pushSprite(10, 10);
+    }
   }
 
   void save() const {
@@ -463,6 +479,13 @@ extern "C" void app_main() {
         // it also stops it from running too
         // example: shift+a+enter -> let go of shift
         if (std::find(last.begin(), last.end(), c) == last.end()) {
+          if (st->helpmode) {
+            if (c == '`') {
+              st->helpmode = false;
+              redraw = true;
+            }
+            continue;
+          }
           running = false;
           bool changed = true;
           if (c == '/' && !keys.fn) {
@@ -493,6 +516,8 @@ extern "C" void app_main() {
             st->clear();
           } else if (c == 'c' && keys.fn) {
             st->stack.clear();
+          } else if (c == 'h' && keys.fn) {
+            st->helpmode = true;
           } else if ((c >= 32) && (c <= 126)) {
             st->idx(st->x, st->y) = c;
           } else {
