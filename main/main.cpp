@@ -363,13 +363,6 @@ struct State {
       for (int x = 0; x < grid_wide; ++x) {
         for (int i = 0; i < sizeof(**grid); ++i) {
           fprintf(f, "%c", static_cast<char>((grid[y][x] >> (i * 8)) & 0xff));
-          if (y == 0 && x == 0) {
-            ESP_LOGI(TAG, "%s",
-                     (std::string("save ") + std::to_string(grid[y][x]) +
-                      std::string(" as ") +
-                      std::to_string((grid[y][x] >> (i * 8)) & 0xff))
-                         .c_str());
-          }
         }
       }
     }
@@ -402,13 +395,6 @@ struct State {
             return;
           }
           pt |= val << (8 * i);
-          if (y == 0 && x == 0) {
-            ESP_LOGI(TAG, "%i", i);
-            ESP_LOGI(TAG, "%s",
-                     (std::string("load ") + std::to_string(val) +
-                      std::string(" as ") + std::to_string(val << (8 * i)))
-                         .c_str());
-          }
         }
         grid[y][x] = pt;
       }
