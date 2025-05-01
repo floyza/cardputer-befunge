@@ -1,0 +1,17 @@
+CompileFlags:
+    CompilationDatabase: build
+    Add:
+      [
+        -isystem,
+        /nix/store/rzl126vpghy80qxq6jk35yi47ilqhvsq-xtensa-esp-elf-esp-idf-v5.4/xtensa-esp-elf/xtensa-esp-elf/include/,
+        -isystem,
+        /nix/store/rzl126vpghy80qxq6jk35yi47ilqhvsq-xtensa-esp-elf-esp-idf-v5.4/xtensa-esp-elf/xtensa-esp-elf/include/c++/14.2.0,
+        -isystem,
+        /nix/store/rzl126vpghy80qxq6jk35yi47ilqhvsq-xtensa-esp-elf-esp-idf-v5.4/xtensa-esp-elf/xtensa-esp-elf/include/c++/14.2.0/xtensa-esp-elf
+      ]
+    Remove:
+      [
+        -fno-shrink-wrap,
+        -fstrict-volatile-bitfields,
+        -fno-tree-switch-conversion
+      ]
