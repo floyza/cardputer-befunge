@@ -30,8 +30,8 @@ constexpr int sq_size = 10;
 constexpr int sq_wide = swidth / sq_size - 4;
 constexpr int sq_high = sheight / sq_size - 1;
 
-constexpr int grid_wide = 256;
-constexpr int grid_high = 256;
+constexpr int grid_wide = 128;
+constexpr int grid_high = 128;
 
 std::mt19937 rng((std::random_device())());
 
@@ -48,10 +48,10 @@ int mod(int i, int m) {
 
 struct State {
  private:
-  int16_t grid[grid_high][grid_wide];  // access with idx()
+  int64_t grid[grid_high][grid_wide];  // access with idx()
  public:
   State() { clear(); }
-  std::vector<int16_t> stack;
+  std::vector<int64_t> stack;
   bool stringmode = false;
   bool helpmode = false;
   int x = 0;
@@ -67,19 +67,19 @@ struct State {
     }
   }
 
-  int32_t pop() {
+  int64_t pop() {
     if (stack.size()) {
-      int32_t ret = stack.back();
+      int64_t ret = stack.back();
       stack.pop_back();
       return ret;
     }
     return 0;
   }
 
-  void push(int32_t i) { stack.push_back(i); }
+  void push(int64_t i) { stack.push_back(i); }
 
   void step() {
-    int32_t a, b;
+    int64_t a, b;
     if (stringmode) {
       if (idx(x, y) == '"') {
         stringmode = false;
@@ -238,11 +238,11 @@ struct State {
     y = mod(y + dy, grid_high);
   }
 
-  int16_t& idx(int x, int y) {
+  int64_t& idx(int x, int y) {
     return grid[mod(y, grid_high)][mod(x, grid_wide)];
   }
 
-  const int16_t& idx(int x, int y) const {
+  const int64_t& idx(int x, int y) const {
     return grid[mod(y, grid_high)][mod(x, grid_wide)];
   }
 
@@ -299,6 +299,13 @@ struct State {
     disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 130,
                     sq_size * sq_high + offset);
 
+    disp.drawString("memf", sq_size * sq_wide + offset,
+                    sq_size * sq_high + offset - sq_size * 4);
+    disp.drawString(std::to_string(esp_get_free_heap_size()).c_str(),
+                    sq_size * sq_wide + offset,
+                    sq_size * sq_high + offset - sq_size * 3);
+    disp.drawString("batt", sq_size * sq_wide + offset,
+                    sq_size * sq_high + offset - sq_size * 2);
     disp.drawString(
         ("%: " + std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(),
         sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 1);
@@ -348,7 +355,16 @@ struct State {
     }
     for (int y = 0; y < grid_high; ++y) {
       for (int x = 0; x < grid_wide; ++x) {
-        fprintf(f, "%c%c", grid[y][x] & 0xff, grid[y][x] >> 8);
+        for (int i = 0; i < sizeof(**grid); ++i) {
+          fprintf(f, "%c", static_cast<char>((grid[y][x] >> (i * 8)) & 0xff));
+          if (y == 0 && x == 0) {
+            ESP_LOGI(TAG, "%s",
+                     (std::string("save ") + std::to_string(grid[y][x]) +
+                      std::string(" as ") +
+                      std::to_string((grid[y][x] >> (i * 8)) & 0xff))
+                         .c_str());
+          }
+        }
       }
     }
     fclose(f);
@@ -372,13 +388,23 @@ struct State {
     }
     for (int y = 0; y < grid_high; ++y) {
       for (int x = 0; x < grid_wide; ++x) {
-        int lsb = fgetc(f);
-        int msb = fgetc(f);
-        if (lsb == EOF || msb == EOF) {
-          ESP_LOGE(TAG, "Hit EOF while loading program");
-          return;
+        int64_t pt = 0;
+        for (int i = 0; i < sizeof(**grid); ++i) {
+          int64_t val = fgetc(f);
+          if (val == EOF) {
+            ESP_LOGE(TAG, "Hit EOF while loading program");
+            return;
+          }
+          pt |= val << (8 * i);
+          if (y == 0 && x == 0) {
+            ESP_LOGI(TAG, "%i", i);
+            ESP_LOGI(TAG, "%s",
+                     (std::string("load ") + std::to_string(val) +
+                      std::string(" as ") + std::to_string(val << (8 * i)))
+                         .c_str());
+          }
         }
-        grid[y][x] = lsb | (msb << 8);
+        grid[y][x] = pt;
       }
     }
     fclose(f);
