@@ -291,26 +291,17 @@ struct State {
     }
     disp.drawRect(sq_size * (sq_wide / 2) + 1, sq_size * (sq_high / 2) + 1,
                   sq_size - 1, sq_size - 1, BLUE);
-    int offset = (sheight - sq_size * sq_high - 10) / 2;
+    int offset = 2;
     disp.drawString(("value: " + std::to_string(idx(x, y))).c_str(), offset,
-                    sq_size * sq_high + offset);
-    disp.drawString(("dx: " + std::to_string(dx)).c_str(), offset + 80,
-                    sq_size * sq_high + offset);
-    disp.drawString(("dy: " + std::to_string(dy)).c_str(), offset + 130,
                     sq_size * sq_high + offset);
 
     disp.drawString("memf", sq_size * sq_wide + offset,
-                    sq_size * sq_high + offset - sq_size * 4);
+                    sq_size * sq_high + offset - sq_size * 2);
     disp.drawString(std::to_string(esp_get_free_heap_size()).c_str(),
                     sq_size * sq_wide + offset,
-                    sq_size * sq_high + offset - sq_size * 3);
-    disp.drawString("batt", sq_size * sq_wide + offset,
-                    sq_size * sq_high + offset - sq_size * 2);
+                    sq_size * sq_high + offset - sq_size * 1);
     disp.drawString(
-        ("%: " + std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(),
-        sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 1);
-    disp.drawString(
-        ("mV" + std::to_string(M5Cardputer.Power.getBatteryVoltage())).c_str(),
+        ("b%:" + std::to_string(M5Cardputer.Power.getBatteryLevel())).c_str(),
         sq_size * sq_wide + offset, sq_size * sq_high + offset - sq_size * 0);
 
     disp.drawString("stack", sq_size * sq_wide + 3, 0);
