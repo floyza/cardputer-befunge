@@ -493,15 +493,13 @@ extern "C" void app_main() {
   while (true) {
     if (M5Cardputer.Keyboard.isChange()) {
       const auto& keys = M5Cardputer.Keyboard.keysState();
-      bool last_tab = false;
-      bool last_enter = false;
       bool redraw = false;
-      if (keys.tab && !last_tab) {
+      if (keys.tab) {
         running = false;
         st->step();
         redraw = true;
       }
-      if (keys.enter && !last_enter) {
+      if (keys.enter) {
         running = true;
       }
       // don't reprocess keys on shift-up or shift-down
@@ -565,8 +563,6 @@ extern "C" void app_main() {
         ticks_since_last_draw = 0;
       }
       last = keys.word;
-      last_tab = keys.tab;
-      last_enter = keys.enter;
     }
     if (running) {
       st->step();
