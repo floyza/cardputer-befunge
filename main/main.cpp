@@ -307,9 +307,24 @@ struct State {
     disp.drawString("stack", sq_size * sq_wide + 3, 0);
     disp.drawFastHLine(sq_size * sq_wide + 2, 10,
                        swidth - (sq_size * sq_wide) - 4, BLACK);
-    for (int i = 0; i < stack.size(); ++i) {
-      disp.drawString(std::to_string(stack[i]).c_str(),
-                      sq_size * sq_wide + offset, 10 * i + 12);
+    constexpr int max_stack_shown = 9;  // determined experimentally
+    int first_stack_shown = 0;
+    if (stack.size() > max_stack_shown) {
+      first_stack_shown = stack.size() - max_stack_shown;
+    }
+    int i = 0;
+    for (int si = first_stack_shown; si < stack.size(); ++si) {
+      if (first_stack_shown != 0 && i == 0) {
+        disp.drawString("^^^^^^", sq_size * sq_wide + offset, 10 * i + 12);
+        i++;
+        continue;
+      }
+      std::string val = std::to_string(stack[si]);
+      if (val.size() > 6) {
+        val = val.substr(0, 5) + ">";
+      }
+      disp.drawString(val.c_str(), sq_size * sq_wide + offset, 10 * i + 12);
+      i++;
     }
     disp.pushSprite(0, 0);
 
