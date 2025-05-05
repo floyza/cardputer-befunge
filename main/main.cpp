@@ -4,14 +4,10 @@
  * SPDX-License-Identifier: CC0-1.0
  */
 
-#include <M5Cardputer.h>
-#include <M5Unified.h>
-
-#include <random>
-
-#include "esp_log.h"
+#include "common.hpp"
 #include "esp_vfs_fat.h"
 #include "input.hpp"
+#include "popup.hpp"
 #include "sdmmc_cmd.h"
 
 static const char* TAG = "befunge";
@@ -21,39 +17,14 @@ constexpr int SD_SPI_MISO_PIN = 39;
 constexpr int SD_SPI_MOSI_PIN = 14;
 constexpr int SD_SPI_CS_PIN = 12;
 
-constexpr int swidth = 240;
-constexpr int sheight = 135;
-
-constexpr int sq_size = 10;
-
-// visible width and height
-constexpr int sq_wide = swidth / sq_size - 4;
-constexpr int sq_high = sheight / sq_size - 1;
-
-constexpr int grid_wide = 128;
-constexpr int grid_high = 128;
-
-std::mt19937 rng((std::random_device())());
-
-// returns a random int in the range [0,i)
-int rand_int(int i) {
-  std::uniform_int_distribution<std::mt19937::result_type> dist(0, i - 1);
-  return dist(rng);
-}
-
-int mod(int i, int m) {
-  int s = i % m;
-  return (s >= 0) ? s : (s + m);
-}
-
 struct State {
  private:
   int64_t grid[grid_high][grid_wide];  // access with idx()
  public:
   State() { clear(); }
   std::vector<int64_t> stack;
+  std::unique_ptr<Popup> popup;
   bool stringmode = false;
-  bool helpmode = false;
   int x = 0;
   int y = 0;
   int dx = 1;
@@ -328,19 +299,8 @@ struct State {
     }
     disp.pushSprite(0, 0);
 
-    if (helpmode) {
-      disp.createSprite(swidth - 20, sheight - 20);
-      disp.setTextColor(BLACK, LIGHTGREY);
-      disp.clear(LIGHTGREY);
-      disp.drawString("0-9 +-*/%!><^v?\":#@", 0, 0);
-      disp.drawString("_ Pop move right if value=0, left otherwise", 0, 10);
-      disp.drawString("| Pop move down if value=0, up otherwise", 0, 20);
-      disp.drawString("\\ Swap two top stack", 0, 30);
-      disp.drawString("$ Pop stack, discard", 0, 40);
-      disp.drawString("p Pop y, x, v, (x,y) to v", 0, 50);
-      disp.drawString("g Pop y and x, get", 0, 60);
-      disp.drawString("` Pop b and a, 1 if a>b else 0", 0, 60);
-      disp.pushSprite(10, 10);
+    if (popup) {
+      popup->draw(disp);
     }
   }
 
@@ -478,11 +438,12 @@ extern "C" void app_main() {
   while (true) {
     auto keydowns = input_handler.update_keypresses();
     bool fn = input_handler.st().fn;
+    bool redraw = false;
     for (char c : keydowns) {
-      bool redraw = false;
-      if (st->helpmode) {
-        if (c == '`') {
-          st->helpmode = false;
+      if (st->popup) {
+        bool open = st->popup->handle_input(c, input_handler.st());
+        if (!open) {
+          st->popup = nullptr;
           redraw = true;
         }
         continue;
@@ -525,7 +486,8 @@ extern "C" void app_main() {
       } else if (c == 'c' && fn) {
         st->stack.clear();
       } else if (c == 'h' && fn) {
-        st->helpmode = true;
+        st->popup = std::make_unique<HelpPopup>();
+        // } else if (c == 't' && fn) {
       } else if ((c >= 32) && (c <= 126)) {
         st->idx(st->x, st->y) = c;
       } else {
@@ -534,16 +496,15 @@ extern "C" void app_main() {
       if (changed) {
         redraw = true;
       }
-      if (redraw) {
-        st->draw();
-        ticks_since_last_draw = 0;
-      }
     }
     if (running) {
       st->step();
       st->draw();
       ticks_since_last_draw = 0;
       M5.delay(50);
+    } else if (redraw) {
+      st->draw();
+      ticks_since_last_draw = 0;
     } else {
       M5.delay(10);
       ticks_since_last_draw++;
