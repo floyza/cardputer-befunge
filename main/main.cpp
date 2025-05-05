@@ -11,6 +11,7 @@
 
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
+#include "input.hpp"
 #include "sdmmc_cmd.h"
 
 static const char* TAG = "befunge";
@@ -466,8 +467,7 @@ extern "C" void app_main() {
 
   ESP_LOGI(TAG, "Init done: starting");
 
-  std::vector<char> last;
-  std::string word_chars;
+  InputHandler input_handler;
 
   State* st = new State();
   // for some reason the display locks up if we don't draw before we load
@@ -476,78 +476,68 @@ extern "C" void app_main() {
   bool running = false;
   int ticks_since_last_draw = 0;
   while (true) {
-    if (M5Cardputer.Keyboard.isChange()) {
-      const auto& keys = M5Cardputer.Keyboard.keysState();
+    auto keydowns = input_handler.update_keypresses();
+    bool fn = input_handler.st().fn;
+    for (char c : keydowns) {
       bool redraw = false;
-      if (keys.tab) {
-        running = false;
+      if (st->helpmode) {
+        if (c == '`') {
+          st->helpmode = false;
+          redraw = true;
+        }
+        continue;
+      }
+
+      running = false;
+      bool changed = true;
+
+      if (c == '\t') {
         st->step();
         redraw = true;
-      }
-      if (keys.enter) {
+      } else if (c == '\n') {
         running = true;
+      } else if (c == '/' && !fn) {
+        // right
+        st->dx = 1;
+        st->dy = 0;
+        st->advance_pointer();
+      } else if (c == ',' && !fn) {
+        // left
+        st->dx = -1;
+        st->dy = 0;
+        st->advance_pointer();
+      } else if (c == ';' && !fn) {
+        // up
+        st->dx = 0;
+        st->dy = -1;
+        st->advance_pointer();
+      } else if (c == '.' && !fn) {
+        // down
+        st->dx = 0;
+        st->dy = 1;
+        st->advance_pointer();
+      } else if (c == 's' && fn) {
+        st->save();
+      } else if (c == 'l' && fn) {
+        st->load();
+      } else if (c == ' ' && fn) {
+        st->clear();
+      } else if (c == 'c' && fn) {
+        st->stack.clear();
+      } else if (c == 'h' && fn) {
+        st->helpmode = true;
+      } else if ((c >= 32) && (c <= 126)) {
+        st->idx(st->x, st->y) = c;
+      } else {
+        changed = false;
       }
-      // don't reprocess keys on shift-up or shift-down
-      for (char c : keys.word) {
-        // TODO releasing shift while still holding a character
-        // gives an extra keypress
-        // it also stops it from running too
-        // example: shift+a+enter -> let go of shift
-        if (std::find(last.begin(), last.end(), c) == last.end()) {
-          if (st->helpmode) {
-            if (c == '`') {
-              st->helpmode = false;
-              redraw = true;
-            }
-            continue;
-          }
-          running = false;
-          bool changed = true;
-          if (c == '/' && !keys.fn) {
-            // right
-            st->dx = 1;
-            st->dy = 0;
-            st->advance_pointer();
-          } else if (c == ',' && !keys.fn) {
-            // left
-            st->dx = -1;
-            st->dy = 0;
-            st->advance_pointer();
-          } else if (c == ';' && !keys.fn) {
-            // up
-            st->dx = 0;
-            st->dy = -1;
-            st->advance_pointer();
-          } else if (c == '.' && !keys.fn) {
-            // down
-            st->dx = 0;
-            st->dy = 1;
-            st->advance_pointer();
-          } else if (c == 's' && keys.fn) {
-            st->save();
-          } else if (c == 'l' && keys.fn) {
-            st->load();
-          } else if (c == ' ' && keys.fn) {
-            st->clear();
-          } else if (c == 'c' && keys.fn) {
-            st->stack.clear();
-          } else if (c == 'h' && keys.fn) {
-            st->helpmode = true;
-          } else if ((c >= 32) && (c <= 126)) {
-            st->idx(st->x, st->y) = c;
-          } else {
-            changed = false;
-          }
-          if (changed) {
-            redraw = true;
-          }
-        }
+      if (changed) {
+        redraw = true;
       }
       if (redraw) {
         st->draw();
         ticks_since_last_draw = 0;
       }
-      last = keys.word;
     }
     if (running) {
       st->step();
