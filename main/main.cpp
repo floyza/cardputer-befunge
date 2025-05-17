@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: CC0-1.0
  */
 
+#include <chrono>
+
 #include "common.hpp"
 #include "esp_vfs_fat.h"
 #include "input.hpp"
@@ -434,10 +436,12 @@ extern "C" void app_main() {
   st->draw();
   st->load();
   bool running = false;
+  bool fast_running = false;
   int ticks_since_last_draw = 0;
   while (true) {
     auto keydowns = input_handler.update_keypresses();
     bool fn = input_handler.st().fn;
+    bool shift = input_handler.st().shift;
     bool redraw = false;
     for (char c : keydowns) {
       if (st->popup) {
@@ -449,12 +453,15 @@ extern "C" void app_main() {
         continue;
       }
 
+      fast_running = false;
       running = false;
       bool changed = true;
 
       if (c == '\t') {
         st->step();
         redraw = true;
+      } else if (c == '\n' && shift) {
+        fast_running = true;
       } else if (c == '\n') {
         running = true;
       } else if (c == '/' && !fn) {
@@ -502,6 +509,14 @@ extern "C" void app_main() {
       st->draw();
       ticks_since_last_draw = 0;
       M5.delay(50);
+    } else if (fast_running) {
+      auto start = std::chrono::high_resolution_clock::now();
+      do {
+        st->step();
+      } while (std::chrono::high_resolution_clock::now() - start <
+               std::chrono::milliseconds(50));
+      st->draw();
+      ticks_since_last_draw = 0;
     } else if (redraw) {
       st->draw();
       ticks_since_last_draw = 0;
