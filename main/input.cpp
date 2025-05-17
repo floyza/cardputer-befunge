@@ -19,8 +19,13 @@ std::vector<char> InputHandler::update_keypresses() {
 
   std::vector<char> keys;
   for (auto key : keydowns) {
-    char val = M5Cardputer.Keyboard.getKey(key);
-    switch (val) {
+    // We have to check the first value, since the second value can
+    // conflict with actual keypresses (see `_key_value_map`)
+    // This is hacky, but it's what `Keyboard_Class::updateKeysState` does.
+    // Probably KEY_ENTER should be 10 (or whatever) instead of 0x28 = '('
+    // same with KEY_BACKSPACE = '*' and KEY_TAB = '+'
+    char base_val = M5Cardputer.Keyboard.getKeyValue(key).value_first;
+    switch (base_val) {
       case KEY_FN:
       case KEY_OPT:
       case KEY_LEFT_CTRL:
@@ -31,7 +36,7 @@ std::vector<char> InputHandler::update_keypresses() {
       case KEY_ENTER:
         break;
       default:
-        keys.push_back(val);
+        keys.push_back(M5Cardputer.Keyboard.getKey(key));
     }
   }
 
